@@ -1,0 +1,9 @@
+# requirements.txt
+# Aquí se listarán las dependencias necesarias para el backend (FastAPI, pandas, matplotlib, openai, etc.)
+
+fastapi
+uvicorn[standard]
+pandas
+python-multipart
+matplotlib
+seaborn
