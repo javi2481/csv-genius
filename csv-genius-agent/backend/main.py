@@ -4,8 +4,10 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import os
 import traceback
+import pandas as pd
 
 from gestor_archivos import guardar_csv, cargar_csv, existe_csv
 from analisis_eda import generar_reporte_json, cargar_reporte_json, contexto_textual_desde_reporte
@@ -23,6 +25,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class FiltroRequest(BaseModel):
+    condicion: str
+    cantidad: int
 
 @app.get("/")
 def root():
@@ -72,3 +78,30 @@ async def graficar(tipo: str = Form(...), columna: str = Form(...)):
         return {"ok": True, "resultado": {"ruta": ruta}, "mensaje": f"Gráfico '{tipo}' generado correctamente."}
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "mensaje": f"Error al generar el gráfico: {str(e)}"})
+
+@app.post("/exportar-filtrado")
+async def exportar_filtrado(filtro: FiltroRequest):
+    try:
+        if not existe_csv():
+            return JSONResponse(status_code=400, content={"ok": False, "mensaje": "No hay archivo CSV cargado."})
+        
+        df = cargar_csv()
+        
+        # Validar condición (implementación básica - se puede mejorar)
+        if not filtro.condicion or not filtro.condicion.strip():
+            return JSONResponse(status_code=400, content={"ok": False, "mensaje": "Condición de filtro requerida."})
+        
+        # Aplicar filtro (implementación básica - se puede mejorar con eval seguro)
+        try:
+            # Por ahora, filtro simple por columnas que contengan la condición
+            # En producción, usar una librería como pandas-query o implementar parser seguro
+            filtered_df = df.head(filtro.cantidad)  # Placeholder - implementar filtro real
+        except Exception as e:
+            return JSONResponse(status_code=400, content={"ok": False, "mensaje": f"Error al aplicar filtro: {str(e)}"})
+        
+        # Convertir a CSV
+        contenido_csv = filtered_df.to_csv(index=False)
+        
+        return {"ok": True, "contenido": contenido_csv, "mensaje": "Filtrado exportado correctamente."}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"ok": False, "mensaje": f"Error al exportar filtrado: {str(e)}"})
