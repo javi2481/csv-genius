@@ -1,8 +1,0 @@
-pandas
-streamlit
-funpymodeling
-ydata-profiling
-matplotlib
-seaborn
-plotly
-openai
