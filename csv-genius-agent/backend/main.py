@@ -13,7 +13,7 @@ from gestor_archivos import guardar_csv, cargar_csv, existe_csv
 from analisis_eda import generar_reporte_json, cargar_reporte_json, contexto_textual_desde_reporte
 from agente_conversacional import interpretar_pregunta
 from visualizaciones import generar_histograma, generar_barras
-from openai_utils import interpretar_pregunta_openai
+from openai_utils import interpretar_pregunta_openai, consultar_openai_directo
 
 app = FastAPI()
 
@@ -29,6 +29,11 @@ app.add_middleware(
 class FiltroRequest(BaseModel):
     condicion: str
     cantidad: int
+
+class OpenAIRequest(BaseModel):
+    pregunta: str
+    contexto: str
+    modelo: str = "gpt-3.5-turbo"
 
 @app.get("/")
 def root():
@@ -51,17 +56,88 @@ async def preguntar(pregunta: str = Form(...), modo: str = Form('basico')):
     try:
         if not existe_csv():
             return JSONResponse(status_code=400, content={"ok": False, "mensaje": "No hay archivo CSV cargado."})
+        
         df = cargar_csv()
         reporte = cargar_reporte_json()
         columnas = list(df.columns)
         contexto = contexto_textual_desde_reporte(reporte)
+        
         if modo == 'openai':
+            # Usar OpenAI para interpretar la pregunta
             resultado = interpretar_pregunta_openai(pregunta, contexto, columnas)
+            if resultado.get('error'):
+                return JSONResponse(status_code=400, content={"ok": False, "mensaje": resultado['mensaje']})
+            
+            # Ejecutar la acción interpretada
+            accion = resultado['accion']
+            columna = resultado['columna']
+            
+            if accion == 'media' and columna:
+                if columna in df.columns and pd.api.types.is_numeric_dtype(df[columna]):
+                    media = df[columna].mean()
+                    return {
+                        "ok": True, 
+                        "resultado": {
+                            "accion": "media",
+                            "columna": columna,
+                            "valor": media,
+                            "mensaje": f"La media de {columna} es {media:.2f}"
+                        }
+                    }
+                else:
+                    return JSONResponse(status_code=400, content={"ok": False, "mensaje": f"La columna '{columna}' no es numérica o no existe."})
+            
+            elif accion == 'histograma' and columna:
+                if columna in df.columns:
+                    ruta = generar_histograma(columna, df)
+                    return {"ok": True, "resultado": {"ruta": ruta}, "mensaje": f"Histograma de {columna} generado."}
+                else:
+                    return JSONResponse(status_code=400, content={"ok": False, "mensaje": f"La columna '{columna}' no existe."})
+            
+            elif accion == 'describe':
+                descripcion = df.describe().to_dict()
+                return {"ok": True, "resultado": descripcion, "mensaje": "Descripción estadística del dataset."}
+            
+            else:
+                return {"ok": True, "resultado": resultado, "mensaje": resultado.get('mensaje', 'Acción interpretada por OpenAI.')}
         else:
+            # Modo básico
             resultado = interpretar_pregunta(pregunta, columnas, modo='basico')
-        return {"ok": True, "resultado": resultado, "mensaje": "Pregunta interpretada correctamente."}
+            return {"ok": True, "resultado": resultado, "mensaje": "Pregunta interpretada correctamente."}
+            
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "mensaje": f"Error al interpretar la pregunta: {str(e)}"})
+
+@app.post("/api/openai")
+async def consultar_openai(request: OpenAIRequest):
+    """
+    Endpoint para consultas directas a OpenAI.
+    Recibe una pregunta y contexto, devuelve una respuesta directa de la IA.
+    """
+    try:
+        resultado = consultar_openai_directo(
+            pregunta=request.pregunta,
+            contexto=request.contexto,
+            modelo=request.modelo
+        )
+        
+        if resultado.get('error'):
+            return JSONResponse(
+                status_code=400, 
+                content={"ok": False, "mensaje": resultado['mensaje']}
+            )
+        
+        return {
+            "ok": True,
+            "respuesta": resultado['respuesta'],
+            "modelo_usado": resultado.get('modelo_usado', request.modelo)
+        }
+        
+    except Exception as e:
+        return JSONResponse(
+            status_code=500, 
+            content={"ok": False, "mensaje": f"Error interno del servidor: {str(e)}"}
+        )
 
 @app.post("/graficar")
 async def graficar(tipo: str = Form(...), columna: str = Form(...)):

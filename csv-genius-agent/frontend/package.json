@@ -1,5 +1,3 @@
-// package.json
-// Aquí se listarán las dependencias necesarias para el frontend (React, axios, etc.)
 {
   "name": "frontend",
   "version": "0.1.0",
