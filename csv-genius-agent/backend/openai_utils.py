@@ -42,7 +42,9 @@ def interpretar_pregunta_openai(pregunta: str, contexto: str, columnas: Optional
     prompt = armar_prompt(contexto, pregunta)
     
     try:
-        respuesta = openai.ChatCompletion.create(
+        # Usar la nueva API de OpenAI
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        respuesta = client.chat.completions.create(
             model=modelo,
             messages=[
                 {"role": "system", "content": PROMPT_SISTEMA},
@@ -52,41 +54,57 @@ def interpretar_pregunta_openai(pregunta: str, contexto: str, columnas: Optional
             max_tokens=256
         )
         
-        contenido = respuesta['choices'][0]['message']['content']
+        contenido = respuesta.choices[0].message.content
         
         try:
             resultado = json.loads(contenido)
             return {
+                'error': False,
                 'accion': resultado.get('accion', 'desconocido'),
                 'columna': resultado.get('columna'),
-                'mensaje': resultado.get('mensaje', '')
+                'mensaje': resultado.get('mensaje', ''),
+                'respuesta': contenido
             }
         except json.JSONDecodeError:
             return {
+                'error': True,
                 'accion': 'desconocido',
                 'columna': None,
-                'mensaje': f'Respuesta no interpretable: {contenido}'
+                'mensaje': f'Respuesta no interpretable: {contenido}',
+                'respuesta': contenido
             }
             
-    except openai.error.AuthenticationError:
+    except openai.AuthenticationError:
         return {
             'error': True,
-            'mensaje': 'Error de autenticación con OpenAI. Verifica tu API key.'
+            'mensaje': 'Error de autenticación con OpenAI. Verifica tu API key.',
+            'accion': None,
+            'columna': None,
+            'respuesta': None
         }
-    except openai.error.RateLimitError:
+    except openai.RateLimitError:
         return {
             'error': True,
-            'mensaje': 'Límite de velocidad excedido. Intenta de nuevo en unos minutos.'
+            'mensaje': 'Límite de velocidad excedido. Intenta de nuevo en unos minutos.',
+            'accion': None,
+            'columna': None,
+            'respuesta': None
         }
-    except openai.error.APIError as e:
+    except openai.APIError as e:
         return {
             'error': True,
-            'mensaje': f'Error de la API de OpenAI: {str(e)}'
+            'mensaje': f'Error de la API de OpenAI: {str(e)}',
+            'accion': None,
+            'columna': None,
+            'respuesta': None
         }
     except Exception as e:
         return {
             'error': True,
-            'mensaje': f'Error al comunicarse con OpenAI: {str(e)}'
+            'mensaje': f'Error al comunicarse con OpenAI: {str(e)}',
+            'accion': None,
+            'columna': None,
+            'respuesta': None
         }
 
 def consultar_openai_directo(pregunta: str, contexto: str, modelo: str = 'gpt-3.5-turbo') -> Dict:
@@ -97,7 +115,9 @@ def consultar_openai_directo(pregunta: str, contexto: str, modelo: str = 'gpt-3.
     if not OPENAI_API_KEY:
         return {
             'error': True,
-            'mensaje': 'No hay API KEY de OpenAI configurada.'
+            'mensaje': 'No hay API KEY de OpenAI configurada.',
+            'respuesta': None,
+            'modelo_usado': None
         }
     
     prompt_sistema = (
@@ -113,7 +133,9 @@ def consultar_openai_directo(pregunta: str, contexto: str, modelo: str = 'gpt-3.
     )
     
     try:
-        respuesta = openai.ChatCompletion.create(
+        # Usar la nueva API de OpenAI
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        respuesta = client.chat.completions.create(
             model=modelo,
             messages=[
                 {"role": "system", "content": prompt_sistema},
@@ -123,31 +145,39 @@ def consultar_openai_directo(pregunta: str, contexto: str, modelo: str = 'gpt-3.
             max_tokens=500
         )
         
-        contenido = respuesta['choices'][0]['message']['content']
+        contenido = respuesta.choices[0].message.content
         
         return {
-            'ok': True,
+            'error': False,
             'respuesta': contenido,
             'modelo_usado': modelo
         }
         
-    except openai.error.AuthenticationError:
+    except openai.AuthenticationError:
         return {
             'error': True,
-            'mensaje': 'Error de autenticación con OpenAI. Verifica tu API key.'
+            'mensaje': 'Error de autenticación con OpenAI. Verifica tu API key.',
+            'respuesta': None,
+            'modelo_usado': None
         }
-    except openai.error.RateLimitError:
+    except openai.RateLimitError:
         return {
             'error': True,
-            'mensaje': 'Límite de velocidad excedido. Intenta de nuevo en unos minutos.'
+            'mensaje': 'Límite de velocidad excedido. Intenta de nuevo en unos minutos.',
+            'respuesta': None,
+            'modelo_usado': None
         }
-    except openai.error.APIError as e:
+    except openai.APIError as e:
         return {
             'error': True,
-            'mensaje': f'Error de la API de OpenAI: {str(e)}'
+            'mensaje': f'Error de la API de OpenAI: {str(e)}',
+            'respuesta': None,
+            'modelo_usado': None
         }
     except Exception as e:
         return {
             'error': True,
-            'mensaje': f'Error al comunicarse con OpenAI: {str(e)}'
+            'mensaje': f'Error al comunicarse con OpenAI: {str(e)}',
+            'respuesta': None,
+            'modelo_usado': None
         } 

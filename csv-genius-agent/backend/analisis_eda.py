@@ -5,37 +5,38 @@ import pandas as pd
 import os
 from ydata_profiling import ProfileReport
 import json
+import traceback
+from visualizaciones import (
+    generar_heatmap_correlacion, 
+    generar_histogramas_principales,
+    generar_graficos_barras_principales
+)
+
+# Constantes
+RUTA_REPORTE_JSON = os.path.join('static', 'reports', 'reporte_descriptivo.json')
+LIMITE_COLS_NUMERICAS_HIST = 5  # Límite de histogramas a generar
+LIMITE_COLS_CATEGORICAS_BARRAS = 5 # Límite de gráficos de barras a generar
 
 # Ruta por defecto para guardar los perfiles
 PROFILE_DIR = os.path.join(os.path.dirname(__file__), 'data')
 if not os.path.exists(PROFILE_DIR):
     os.makedirs(PROFILE_DIR)
 
-REPORTE_JSON = os.path.join(PROFILE_DIR, 'ultimo_reporte.json')
 
+def generar_reporte_json(df):
+    """Genera un reporte de perfilado y lo guarda como JSON."""
+    if os.path.exists(RUTA_REPORTE_JSON):
+        os.remove(RUTA_REPORTE_JSON)
+    
+    perfil = ProfileReport(df, title="Reporte de Análisis Descriptivo", explorative=True)
+    perfil.to_file(RUTA_REPORTE_JSON)
 
-def generar_reporte_json(df: pd.DataFrame) -> dict:
-    """
-    Genera un reporte estructurado del DataFrame usando ydata-profiling y lo guarda como JSON.
-    No genera ni guarda HTML.
-    Devuelve el dict extraído del ProfileReport.
-    """
-    perfil = ProfileReport(df, title="Análisis Automático del CSV", explorative=True)
-    reporte_dict = perfil.to_dict()
-    # Guardar solo el JSON
-    with open(REPORTE_JSON, 'w', encoding='utf-8') as f:
-        json.dump(reporte_dict, f, ensure_ascii=False, indent=2)
-    return reporte_dict
-
-
-def cargar_reporte_json() -> dict:
-    """
-    Carga el último reporte generado en formato JSON.
-    """
-    if os.path.exists(REPORTE_JSON):
-        with open(REPORTE_JSON, 'r', encoding='utf-8') as f:
+def cargar_reporte_json():
+    """Carga el reporte JSON si existe."""
+    if os.path.exists(RUTA_REPORTE_JSON):
+        with open(RUTA_REPORTE_JSON, 'r') as f:
             return json.load(f)
-    return {}
+    return None
 
 
 def resumen_simple(df: pd.DataFrame) -> dict:
@@ -63,31 +64,109 @@ def existe_reporte_json() -> bool:
     """
     Verifica si existe un reporte generado (JSON).
     """
-    return os.path.exists(REPORTE_JSON)
+    return os.path.exists(RUTA_REPORTE_JSON)
 
 
-def contexto_textual_desde_reporte(reporte: dict) -> str:
+def realizar_analisis_exploratorio_completo(df):
     """
-    Convierte el JSON del reporte de ydata-profiling en un contexto textual legible para OpenAI.
-    Extrae columnas, tipos, estadísticas y proporciones de nulos.
+    Realiza un análisis exploratorio robusto y automático del DataFrame.
+    Cada paso se envuelve en un try-except para asegurar que se devuelva un resultado parcial
+    incluso si una parte del análisis falla.
     """
-    if not reporte:
-        return "No hay reporte disponible."
-    # Extraer información relevante
+    analisis_resultado = {
+        "analisis_completo": True,
+        "error": False,
+        "mensaje_error": "",
+        "estadisticas_descriptivas": {},
+        "valores_nulos": {},
+        "estadisticas_categoricas": {},
+        "matriz_correlacion": {},
+        "visualizaciones": {
+            "heatmap_correlacion": None,
+            "histogramas": {},
+            "graficos_barras": {}
+        }
+    }
+
     try:
-        variables = reporte.get('variables', {})
-        columnas = list(variables.keys())
-        tipos = {col: variables[col].get('type') for col in columnas}
-        nulos = {col: variables[col].get('n_missing', 0) for col in columnas}
-        unicos = {col: variables[col].get('n_unique', 0) for col in columnas}
-        stats = {col: {k: v for k, v in variables[col].items() if k in ['mean', 'std', 'min', 'max', 'median']} for col in columnas}
-        contexto = (
-            f"Columnas: {columnas}\n"
-            f"Tipos de datos: {tipos}\n"
-            f"Valores únicos por columna: {unicos}\n"
-            f"Valores nulos por columna: {nulos}\n"
-            f"Estadísticas principales: {stats}\n"
-        )
-        return contexto
+        columnas_numericas = df.select_dtypes(include=['number']).columns.tolist()
+        columnas_categoricas = df.select_dtypes(include=['object', 'category']).columns.tolist()
+
+        # 1. Estadísticas Descriptivas
+        try:
+            analisis_resultado["estadisticas_descriptivas"] = df[columnas_numericas].describe().round(2).to_dict()
+        except Exception as e:
+            analisis_resultado["mensaje_error"] += f"Error en stats descriptivas: {e}. "
+            print(f"Error en stats descriptivas: {e}")
+
+        # 2. Valores Nulos
+        try:
+            valores_nulos = df.isnull().sum()
+            analisis_resultado["valores_nulos"] = valores_nulos[valores_nulos > 0].to_dict()
+        except Exception as e:
+            analisis_resultado["mensaje_error"] += f"Error en valores nulos: {e}. "
+            print(f"Error en valores nulos: {e}")
+
+        # 3. Estadísticas Categóricas
+        try:
+            analisis_resultado["estadisticas_categoricas"] = {
+                col: {"valores_unicos": df[col].nunique(), "moda": df[col].mode().iloc[0] if not df[col].mode().empty else 'N/A'}
+                for col in columnas_categoricas
+            }
+        except Exception as e:
+            analisis_resultado["mensaje_error"] += f"Error en stats categóricas: {e}. "
+            print(f"Error en stats categóricas: {e}")
+
+        # 4. Matriz de Correlación (cálculo y visualización)
+        try:
+            if len(columnas_numericas) > 1:
+                analisis_resultado["matriz_correlacion"] = df[columnas_numericas].corr().round(2).to_dict()
+                analisis_resultado["visualizaciones"]["heatmap_correlacion"] = generar_heatmap_correlacion(df[columnas_numericas])
+        except Exception as e:
+            analisis_resultado["mensaje_error"] += f"Error en correlación: {e}. "
+            print(f"Error en correlación: {e}")
+            traceback.print_exc()
+
+        # 5. Histogramas
+        try:
+            analisis_resultado["visualizaciones"]["histogramas"] = generar_histogramas_principales(
+                df, columnas_numericas, LIMITE_COLS_NUMERICAS_HIST
+            )
+        except Exception as e:
+            analisis_resultado["mensaje_error"] += f"Error en histogramas: {e}. "
+            print(f"Error en histogramas: {e}")
+
+        # 6. Gráficos de Barras
+        try:
+            analisis_resultado["visualizaciones"]["graficos_barras"] = generar_graficos_barras_principales(
+                df, columnas_categoricas, LIMITE_COLS_CATEGORICAS_BARRAS
+            )
+        except Exception as e:
+            analisis_resultado["mensaje_error"] += f"Error en gráficos de barras: {e}. "
+            print(f"Error en gráficos de barras: {e}")
+
+        if analisis_resultado["mensaje_error"]:
+            analisis_resultado["error"] = True
+
+        return analisis_resultado
+
     except Exception as e:
-        return f"No se pudo generar contexto textual: {str(e)}" 
+        print(f"Error crítico durante el análisis exploratorio: {e}")
+        traceback.print_exc()
+        return {"analisis_completo": False, "error": True, "mensaje": str(e)}
+
+
+def contexto_textual_desde_reporte(reporte):
+    """Extrae un contexto textual simple del reporte JSON para la IA."""
+    if not reporte or 'table' not in reporte:
+        return "No hay información de análisis disponible."
+
+    n_vars = reporte['table']['n_variables']
+    n_obs = reporte['table']['n']
+    missing_cells = reporte['table']['p_cells_missing'] * 100
+    
+    contexto = (
+        f"El conjunto de datos tiene {n_vars} columnas y {n_obs} filas. "
+        f"El porcentaje de datos faltantes es {missing_cells:.2f}%."
+    )
+    return contexto 

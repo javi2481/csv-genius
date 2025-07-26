@@ -225,3 +225,258 @@ body {
 .chat-form button:hover {
   background-color: #2980b9;
 }
+
+/* =================================
+   Componente AnalysisDisplay
+   ================================= */
+
+.analysis-display {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 24px;
+  margin-top: 20px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.analysis-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.analysis-icon {
+  font-size: 24px;
+}
+
+.analysis-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid #e9ecef;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+.metric-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #34495e;
+  line-height: 1.2;
+}
+
+.metric-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.columns-section {
+  margin-top: 20px;
+}
+
+.columns-section h3 {
+  font-size: 1rem;
+  color: #2c3e50;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.columns-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.column-tag {
+  background-color: #e9ecef;
+  color: #495057;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-family: 'Courier New', Courier, monospace;
+  transition: background-color 0.2s ease;
+}
+
+.column-tag:hover {
+  background-color: #dee2e6;
+  color: #212529;
+}
+
+/* =================================
+   Dashboard Exploratorio
+   ================================= */
+.analysis-dashboard {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 0;
+  margin-top: 20px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.03);
+}
+
+.dashboard-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #34495e;
+}
+
+.tabs-container {
+  display: flex;
+  background-color: #ffffff;
+  padding: 0 24px;
+  border-bottom: 1px solid #dee2e6;
+  gap: 20px;
+}
+
+.tab-button {
+  padding: 14px 4px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  color: #6c757d;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease-in-out;
+}
+
+.tab-button:hover {
+  color: #34495e;
+}
+
+.tab-button.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
+  font-weight: 600;
+}
+
+.tab-content {
+  padding: 24px;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.tab-content h3 {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.chart-container {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.chart-container.heatmap {
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
+}
+
+.chart-container img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estilos para Tablas de Estadísticas */
+.table-container {
+  overflow-x: auto;
+  margin-bottom: 24px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+thead {
+  background-color: #f8f9fa;
+}
+
+th, td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+}
+
+th {
+  font-weight: 600;
+  color: #495057;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+tbody tr:hover {
+  background-color: #e9ecef;
+}
+
+td:first-child, th:first-child {
+  font-weight: 500;
+  color: #212529;
+}
+
+.tab-pane {
+  animation: fadeIn 0.5s ease-out;
+}

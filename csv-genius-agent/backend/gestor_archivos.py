@@ -18,14 +18,27 @@ def guardar_csv(file) -> str:
     'file' puede ser un objeto file-like (por ejemplo, UploadFile de FastAPI o un archivo abierto en modo binario).
     Devuelve la ruta donde se guardó el archivo.
     """
-    with open(CSV_ACTIVO, 'wb') as f:
-        if hasattr(file, 'file'):
-            # Caso UploadFile de FastAPI
-            f.write(file.file.read())
-        else:
-            # Caso archivo binario estándar
-            f.write(file.read())
-    return CSV_ACTIVO
+    try:
+        with open(CSV_ACTIVO, 'wb') as f:
+            if hasattr(file, 'file'):
+                # Caso UploadFile de FastAPI
+                content = file.file.read()
+                f.write(content)
+                # Resetear el cursor para futuras lecturas
+                file.file.seek(0)
+            else:
+                # Caso archivo binario estándar
+                content = file.read()
+                f.write(content)
+                # Resetear el cursor si es posible
+                if hasattr(file, 'seek'):
+                    file.seek(0)
+        
+        print(f"Archivo guardado exitosamente en: {CSV_ACTIVO}")  # Debug
+        return CSV_ACTIVO
+    except Exception as e:
+        print(f"Error guardando archivo: {str(e)}")  # Debug
+        raise e
 
 
 def cargar_csv() -> pd.DataFrame:
